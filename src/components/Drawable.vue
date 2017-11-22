@@ -69,11 +69,16 @@
 </template>
 
 <script>
+
+import Point from './Point.js'
+
 export default {
   mounted () {
     this.canvas = this.$refs.canvas
     this.context = this.canvas.getContext('2d')
+    this.generateRandomPoints()
     this.drawAllNodes()
+    // this.createRandomCircles()
   },
   data () {
     return {
@@ -85,21 +90,26 @@ export default {
       overPoint: null,
       dragMode: false,
 
-      pointSize: 7,
+      pointSize: 18,
+      pointsCount: 5,
+      thinLineThickness: 1,
       strokeStyle: 'darkgrey',
       fillStyle: '#fff',
-      points: [
-        { x: 100, y: 100 },
-        { x: 200, y: 100 },
-        { x: 100, y: 200 },
-        { x: 200, y: 200 }
-      ]
+      lines: [],
+      points: []
     }
   },
   computed: {
 
   },
   methods: {
+    generateRandomPoints () {
+      for (var i = 0; i < this.pointsCount; i++) {
+        var x = Math.random() * this.canvasWidth
+        var y = Math.random() * this.canvasHeight
+        this.points.push(new Point(x, y))
+      }
+    },
     removePoint (index) {
       this.points.splice(index, 1)
       this.clear()
@@ -193,6 +203,7 @@ export default {
       this.context.restore()
       this.points.push(point)
     },
+    // {{{ drawNode
     drawNode (point) {
       this.context.beginPath()
       this.context.moveTo(point.x - this.pointSize, point.y - this.pointSize)
@@ -205,10 +216,61 @@ export default {
       this.context.strokeStyle = this.strokeStyle
       this.context.stroke()
     },
+    // }}}
+    // {{{ drawCircle
+    drawCircle (point, radius) {
+      this.context.fillStyle = 'GOLD'
+      this.context.beginPath()
+      this.context.arc(point.x, point.y, radius, 0, Math.PI * 2, true)
+      this.context.closePath()
+      this.context.fill()
+    },
+    // }}}
+    // {{{ createRandomCircles
+    createRandomCircles (width, height) {
+      // randomly draw 5 circles
+      var circlesCount = 5
+      var circleRadius = 10
+      for (var i = 0; i < circlesCount; i++) {
+        var x = Math.random() * width
+        var y = Math.random() * height
+        this.drawCircle(x, y, circleRadius)
+      }
+    },
+    // }}}
+    Line (startPoint, endPoint, thickness) {
+      return {
+        startPoint: startPoint,
+        endPoint: endPoint,
+        thickness: thickness
+      }
+    },
+    drawLine (x1, y1, x2, y2, thickness) {
+      this.context.beginPath()
+      this.context.moveTo(x1, y1)
+      this.context.lineTo(x2, y2)
+      this.context.lineWidth = thickness
+      this.context.strokeStyle = '#cfc'
+      this.context.stroke()
+    },
+    connectCircles () {
+      // connect the circles to each other with lines
+      this.lines = []
+      for (var i = 0; i < this.points.length; i++) {
+        var startPoint = this.points[i]
+        for (var j = 0; j < i; j++) {
+          var endPoint = this.points[j]
+          this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, 1)
+          this.lines.push(this.Line(startPoint, endPoint, this.thinLineThickness))
+        }
+      }
+    },
     drawAllNodes () {
       this.context.save()
       for (let point of this.points) {
-        this.drawNode(point)
+        // this.drawNode(point)
+        this.connectCircles()
+        this.drawCircle(point, this.pointSize)
       }
       this.context.restore()
     }
