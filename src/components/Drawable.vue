@@ -71,12 +71,14 @@
 <script>
 
 import Point from './Point.js'
+import Segment from './Segment.js'
 
 export default {
   mounted () {
     this.canvas = this.$refs.canvas
     this.context = this.canvas.getContext('2d')
     this.generateRandomPoints()
+    this.segments.push(new Segment(this.points[0], this.points[1]))
     this.drawAllNodes()
     // this.createRandomCircles()
   },
@@ -91,12 +93,14 @@ export default {
       dragMode: false,
 
       pointSize: 18,
-      pointsCount: 5,
+      pointsCount: 10,
       thinLineThickness: 1,
+      boldLineThickness: 3,
       strokeStyle: 'darkgrey',
       fillStyle: '#fff',
       lines: [],
-      points: []
+      points: [],
+      segments: []
     }
   },
   computed: {
@@ -105,8 +109,8 @@ export default {
   methods: {
     generateRandomPoints () {
       for (var i = 0; i < this.pointsCount; i++) {
-        var x = Math.random() * this.canvasWidth
-        var y = Math.random() * this.canvasHeight
+        var x = Math.floor(Math.random() * this.canvasWidth)
+        var y = Math.floor(Math.random() * this.canvasHeight)
         this.points.push(new Point(x, y))
       }
     },
@@ -203,6 +207,65 @@ export default {
       this.context.restore()
       this.points.push(point)
     },
+    Turn (p1, p2, p3) {
+      let a = p1.y
+      let b = p1.x
+      let c = p2.y
+      let d = p2.x
+      let e = p3.y
+      let f = p3.x
+      let A = (f - b) * (c - a)
+      let B = (d - b) * (e - a)
+      return (A > B + Number.EPSILON) ? 1 : (A + Number.EPSILON < B) ? -1 : 0
+    },
+    // isIntersect (p1, p2, p3, p4) {
+    //   return (this.Turn(p1, p3, p4) !== this.Turn(p2, p3, p4)) && (this.Turn(p1, p2, p3) !== this.Turn(p1, p2, p4))
+    // },
+    isIntersect (line1, line2) {
+      // convert line1 to general form of line: Ax+By = C
+      var a1 = line1.endPoint.y - line1.startPoint.y
+      var b1 = line1.startPoint.x - line1.endPoint.x
+      var c1 = a1 * line1.startPoint.x + b1 * line1.startPoint.y
+
+      // convert line2 to general form of line: Ax+By = C
+      var a2 = line2.endPoint.y - line2.startPoint.y
+      var b2 = line2.startPoint.x - line2.endPoint.x
+      var c2 = a2 * line2.startPoint.x + b2 * line2.startPoint.y
+
+      // calculate the intersection point
+      var d = a1 * b2 - a2 * b1
+
+      // parallel when d is 0
+      if (d === 0) {
+        return false
+      }
+
+      // solve the interception point at (x, y)
+      var x = (b2 * c1 - b1 * c2) / d
+      var y = (a1 * c2 - a2 * c1) / d
+
+      // check if the interception point is on both line segments
+      if ((this.isInBetween(line1.startPoint.x, x, line1.endPoint.x) || this.isInBetween(line1.startPoint.y, y, line1.endPoint.y)) &&
+        (this.isInBetween(line2.startPoint.x, x, line2.endPoint.x) || this.isInBetween(line2.startPoint.y, y, line2.endPoint.y))) {
+        return true
+      }
+
+      // be default the given lines is not intersected.
+      return false
+    },
+    // return true if b is between a and c,
+    // we exclude the result when a==b or b==c
+    isInBetween (a, b, c) {
+      // return false if b is almost equal to a or c.
+      // this is to eliminate some floating point when
+      // two value is equal to each other but different with 0.00000...0001
+      if (Math.abs(a - b) < 0.000001 || Math.abs(b - c) < 0.000001) {
+        return false
+      }
+
+      // true when b is in between a and c
+      return (a < b && b < c) || (c < b && b < a)
+    },
     // {{{ drawNode
     drawNode (point) {
       this.context.beginPath()
@@ -254,16 +317,41 @@ export default {
       this.context.stroke()
     },
     connectCircles () {
-      // connect the circles to each other with lines
+      // populate the lines[] with all possible points connections
       this.lines = []
       for (var i = 0; i < this.points.length; i++) {
         var startPoint = this.points[i]
         for (var j = 0; j < i; j++) {
           var endPoint = this.points[j]
-          this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, 1)
+          // this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, 1)
           this.lines.push(this.Line(startPoint, endPoint, this.thinLineThickness))
         }
       }
+    },
+    updateLineIntersection () {
+      // checking lines intersection and bold those lines.
+      for (var i = 0; i < this.lines.length; i++) {
+        let line1 = this.lines[i]
+        line1.thickness = this.thinLineThickness
+
+        for (var j = 0; j < i; j++) {
+          var line2 = this.lines[j]
+
+          // we check if two lines are intersected and bold the line if they are.
+          if (this.isIntersect(line1, line2)) {
+            line1.thickness = this.boldLineThickness
+            line2.thickness = this.boldLineThickness
+            this.lines[i] = line1
+            this.lines[j] = line2
+          }
+        }
+      }
+    },
+    drawAllLines () {
+      this.updateLineIntersection()
+      this.lines.forEach(({startPoint, endPoint, thickness}) => {
+        this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, thickness)
+      })
     },
     drawAllNodes () {
       this.context.save()
@@ -271,6 +359,7 @@ export default {
         // this.drawNode(point)
         this.connectCircles()
         this.drawCircle(point, this.pointSize)
+        this.drawAllLines()
       }
       this.context.restore()
     }
