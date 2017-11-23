@@ -2,7 +2,7 @@
   "name": "vue-draw-canvas",
   "version": "1.0.0",
   "description": "A Vue.js project",
-  "author": "stefanonepa <stefano.nepa@outlook.com>",
+  "author": "Ibrahim Ahmed <ia.ibrahim@gmail.com>",
   "private": true,
   "scripts": {
     "dev": "node build/dev-server.js",
@@ -13,6 +13,7 @@
     "lint": "eslint --ext .js,.vue src test/unit/specs"
   },
   "dependencies": {
+    "cdt2d": "^1.0.0",
     "vue": "^2.3.3"
   },
   "devDependencies": {

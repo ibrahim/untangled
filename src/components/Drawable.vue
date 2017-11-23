@@ -2,36 +2,16 @@
   <div class="flex">
 
     <div>
-      <h2>Canavas properties</h2>
       <div>
-        <h3>Actions:</h3>
-        <button @click="drawAllNodes">drawAllNodes</button>
-        <button @click="clear">clear canvas (not points)</button>
-        <button @click="clearPoints">clear points</button>
-      </div>
-
-      <div>
-        <h3>Size:</h3>
-        <ul>
-          <li>
-            <label>Width: </label>
-            <input type="text" v-model="canvasWidth">
-          </li>
-          <li>
-            <label>Height: </label>
-            <input type="text" v-model="canvasHeight">
-          </li>
-        </ul>
-      </div>
-
-      <div>
-        <h3>Points properties:</h3>
-        <label>Point Size</label>
-        <input type="number" v-model.number="pointSize">
+        <button @click="restart">Restart Game</button>
+        <button @click="easyLevel">Easy</button>
+        <button @click="fairLevel">Fair</button>
+        <button @click="toughLevel">Tough</button>
       </div>
     </div>
 
-    <div>
+    <div class="canvas-container">
+      <div class="youwin" v-if="finishedGame">You Win</div>
       <canvas
         ref="canvas"
         :width="canvasWidth"
@@ -43,80 +23,60 @@
       ></canvas>
     </div>
 
-    <div>
-      <h3>Points (data)</h3>
-      <table  class="ui selectable table">
-        <thead>
-          <tr><th>N°</th><th>X</th><th>Y</th><th>Remove</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="(point, index) in points" :key="point">
-            <td>{{index + 1}}</td>
-            <td>{{point.x}}</td>
-            <td>{{point.y}}</td>
-            <td><button @click="removePoint(index)">X</button></td>
-            </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div>
-      <h3>Test data</h3>
-      <label>OverPoint:</label>
-      <pre>{{overPoint}}</pre>
-    </div>
   </div>
 </template>
 
 <script>
 
 import Point from './Point.js'
-import Segment from './Segment.js'
+import cdt2d from 'cdt2d'
 
 export default {
   mounted () {
     this.canvas = this.$refs.canvas
     this.context = this.canvas.getContext('2d')
-    this.generateRandomPoints()
-    this.segments.push(new Segment(this.points[0], this.points[1]))
-    this.drawAllNodes()
-    // this.createRandomCircles()
+    this.restart()
   },
   data () {
     return {
       canvas: {},
       context: {},
-      canvasHeight: 350,
-      canvasWidth: 450,
-
+      canvasHeight: 500,
+      canvasWidth: 900,
       overPoint: null,
       dragMode: false,
-
-      pointSize: 18,
-      pointsCount: 10,
-      thinLineThickness: 1,
-      boldLineThickness: 3,
+      finishedGame: false,
+      pointSize: 20,
+      pointsCount: 20,
+      intersectedCount: 0,
       strokeStyle: 'darkgrey',
       fillStyle: '#fff',
       lines: [],
       points: [],
-      segments: []
+      edges: null
     }
   },
   computed: {
 
   },
   methods: {
-    generateRandomPoints () {
+    randomizePoints () {
       for (var i = 0; i < this.pointsCount; i++) {
-        var x = Math.floor(Math.random() * this.canvasWidth)
-        var y = Math.floor(Math.random() * this.canvasHeight)
-        this.points.push(new Point(x, y))
+        var x = 30 + Math.floor(Math.random() * (this.canvasWidth - 60))
+        var y = 30 + Math.floor(Math.random() * (this.canvasHeight - 60))
+        this.points[i] = new Point(x, y)
       }
     },
-    removePoint (index) {
-      this.points.splice(index, 1)
+    restart () {
+      this.lines = []
+      this.edges = null
+      this.points = []
+      this.finishedGame = false
       this.clear()
+      this.generatePoints()
+      this.triangulate()
+      this.randomizePoints()
+      this.connectPoints()
       this.drawAllNodes()
     },
     matchPoints (checkPoint, mousePoint) {
@@ -140,6 +100,18 @@ export default {
     clear () {
       this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
     },
+    easyLevel () {
+      this.pointsCount = 6
+      this.restart()
+    },
+    fairLevel () {
+      this.pointsCount = 9
+      this.restart()
+    },
+    toughLevel () {
+      this.pointsCount = 12
+      this.restart()
+    },
     clearPoints () {
       this.points = []
       this.clear()
@@ -157,11 +129,13 @@ export default {
       if (this.dragMode && this.overPoint) {
         this.dragPoint(this.overPoint, mouseUpPoint)
         this.dragMode = false
+        if (this.intersectedCount === 0 && !this.finishedGame) { this.playWin() }
       } else {
-        this.addNode(mouseUpPoint)
+        // this.addNode(mouseUpPoint)
       }
     },
     dragPoint (selectedPoint, newPoint) {
+      if (this.finishedGame) { return }
       this.points.map((pointToMove) => {
         if (pointToMove.x === selectedPoint.x && pointToMove.y === selectedPoint.y) {
           pointToMove.x = newPoint.x
@@ -244,7 +218,7 @@ export default {
       var x = (b2 * c1 - b1 * c2) / d
       var y = (a1 * c2 - a2 * c1) / d
 
-      // check if the interception point is on both line segments
+      // check if the intersection point is on both line segments
       if ((this.isInBetween(line1.startPoint.x, x, line1.endPoint.x) || this.isInBetween(line1.startPoint.y, y, line1.endPoint.y)) &&
         (this.isInBetween(line2.startPoint.x, x, line2.endPoint.x) || this.isInBetween(line2.startPoint.y, y, line2.endPoint.y))) {
         return true
@@ -282,65 +256,81 @@ export default {
     // }}}
     // {{{ drawCircle
     drawCircle (point, radius) {
-      this.context.fillStyle = 'GOLD'
+      this.context.fillStyle = '#d00'
       this.context.beginPath()
       this.context.arc(point.x, point.y, radius, 0, Math.PI * 2, true)
       this.context.closePath()
       this.context.fill()
     },
     // }}}
-    // {{{ createRandomCircles
-    createRandomCircles (width, height) {
-      // randomly draw 5 circles
-      var circlesCount = 5
-      var circleRadius = 10
-      for (var i = 0; i < circlesCount; i++) {
-        var x = Math.random() * width
-        var y = Math.random() * height
-        this.drawCircle(x, y, circleRadius)
-      }
-    },
-    // }}}
-    Line (startPoint, endPoint, thickness) {
+    Line (startPoint, endPoint, isIntersected) {
       return {
         startPoint: startPoint,
         endPoint: endPoint,
-        thickness: thickness
+        isIntersected: isIntersected
       }
     },
-    drawLine (x1, y1, x2, y2, thickness) {
+    drawLine (x1, y1, x2, y2, isIntersected) {
       this.context.beginPath()
       this.context.moveTo(x1, y1)
       this.context.lineTo(x2, y2)
-      this.context.lineWidth = thickness
-      this.context.strokeStyle = '#cfc'
+      this.context.lineWidth = 4
+      this.context.strokeStyle = isIntersected ? 'navy' : '#cfc'
       this.context.stroke()
     },
-    connectCircles () {
-      // populate the lines[] with all possible points connections
-      this.lines = []
-      for (var i = 0; i < this.points.length; i++) {
-        var startPoint = this.points[i]
-        for (var j = 0; j < i; j++) {
-          var endPoint = this.points[j]
-          // this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, 1)
-          this.lines.push(this.Line(startPoint, endPoint, this.thinLineThickness))
-        }
+    generatePoints () {
+      for (let i = 0; i < this.pointsCount - 4; i++) {
+        let x = Math.floor((this.canvasWidth / 2) + 100 * Math.cos(2 * Math.PI * i / (this.pointsCount - 4)))
+        let y = Math.floor((this.canvasHeight / 2) + 100 * Math.sin(2 * Math.PI * i / (this.pointsCount - 4)))
+        this.points.push(new Point(x, y))
       }
+      for (let i = 0; i < 4; i++) {
+        let x = Math.floor((this.canvasWidth / 2) + 50 * Math.cos(2 * Math.PI * i / 4))
+        let y = Math.floor((this.canvasHeight / 2) + 50 * Math.sin(2 * Math.PI * i / 4))
+        this.points.push(new Point(x, y))
+      }
+    },
+    connectPoints () {
+      // populate this.lines[] with points based on trianglulated edges
+      this.lines = []
+      this.edges.forEach(([a, b]) => {
+        this.lines.push(this.Line(this.points[a], this.points[b], false))
+      })
+    },
+    triangulate () {
+      // use cdt2d to draw Delaunay Triangulation to ensure a planar graph
+      // var points = [ [-2, -2], [-2, 2], [2, 2], [2, -2], [1, 0], [0, 1], [-1, 0], [0, -1] ]
+      this.lines = []
+      var coordinates = this.points.map(({x, y}) => { return [x, y] })
+      var triangles = cdt2d(coordinates, this.edges || [], {exterior: true})
+      var edges = []
+      triangles.forEach(([a, b, c]) => {
+        edges.push([a, b])
+        edges.push([b, c])
+        edges.push([c, a])
+        console.log(a, b, c)
+      })
+      if (!this.edges) { this.edges = edges }
+    },
+    playWin () {
+      this.finishedGame = true
+      new Audio('/static/tada.mp3').play()
     },
     updateLineIntersection () {
       // checking lines intersection and bold those lines.
+      this.intersectedCount = 0
       for (var i = 0; i < this.lines.length; i++) {
         let line1 = this.lines[i]
-        line1.thickness = this.thinLineThickness
+        line1.isIntersected = false
 
         for (var j = 0; j < i; j++) {
           var line2 = this.lines[j]
 
           // we check if two lines are intersected and bold the line if they are.
           if (this.isIntersect(line1, line2)) {
-            line1.thickness = this.boldLineThickness
-            line2.thickness = this.boldLineThickness
+            this.intersectedCount = this.intersectedCount + 1
+            line1.isIntersected = true
+            line2.isIntersected = true
             this.lines[i] = line1
             this.lines[j] = line2
           }
@@ -349,17 +339,16 @@ export default {
     },
     drawAllLines () {
       this.updateLineIntersection()
-      this.lines.forEach(({startPoint, endPoint, thickness}) => {
-        this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, thickness)
+      this.lines.forEach(({startPoint, endPoint, isIntersected}) => {
+        this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, isIntersected)
       })
     },
     drawAllNodes () {
       this.context.save()
+      this.connectPoints()
+      this.drawAllLines()
       for (let point of this.points) {
-        // this.drawNode(point)
-        this.connectCircles()
         this.drawCircle(point, this.pointSize)
-        this.drawAllLines()
       }
       this.context.restore()
     }
@@ -370,9 +359,31 @@ export default {
   canvas {
     border:1px solid #bbb;
   }
+  .canvas-container {
+    position:relative;
+  }
+  .youwin {
+    pointer-events:none;
+    position:absolute;
+    top:160px;
+    width:400px;
+    margin-left:-200px;
+    left:50%;
+    height:160px;
+    font-size:80px;
+    font-weight:bold;
+    font-family:Impact;
+    padding:70px 0px 0px 0px;
+    text-align:center;
+    color:#fff;
+    text-shadow:0px 0px 20px rgba(0,0,0,0.3);
+    background-color:rgba(0,200,0,0.5);
+  }
   .flex{
     display: flex;
-    flex-flow: row wrap;
+    flex-flow: column wrap;
+    justify-content:center;
+    align-items:center;
   }
   .flex > * {
     border: 1px solid #eee;

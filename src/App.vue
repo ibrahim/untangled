@@ -1,6 +1,5 @@
 <template>
   <div id="app" class="ui">
-    <h1>This is a drawable canvas with <img src="./assets/logo.png" width="30px" /></h1>
     <drawable></drawable>
   </div>
 </template>
