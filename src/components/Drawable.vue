@@ -2,11 +2,13 @@
   <div class="flex">
 
     <div>
+      <h4><a href="https://github.com/ibrahim/untangled">Untangled Game in HTML5/Canvas and Vue.js</a></h4>
       <div>
         <button @click="restart">Restart Game</button>
         <button @click="easyLevel">Easy</button>
         <button @click="fairLevel">Fair</button>
         <button @click="toughLevel">Tough</button>
+        <button @click="crazyLevel">Crazy</button>
       </div>
     </div>
 
@@ -29,6 +31,8 @@
 <script>
 
 import Point from './Point.js'
+
+// Use Constrained Delaunay Triangulation to build a planar graph
 import cdt2d from 'cdt2d'
 
 export default {
@@ -46,8 +50,9 @@ export default {
       overPoint: null,
       dragMode: false,
       finishedGame: false,
-      pointSize: 20,
-      pointsCount: 20,
+      connectedWithOverPoint: null,
+      pointSize: 10,
+      pointsCount: 10,
       intersectedCount: 0,
       strokeStyle: 'darkgrey',
       fillStyle: '#fff',
@@ -60,25 +65,21 @@ export default {
 
   },
   methods: {
-    randomizePoints () {
-      for (var i = 0; i < this.pointsCount; i++) {
-        var x = 30 + Math.floor(Math.random() * (this.canvasWidth - 60))
-        var y = 30 + Math.floor(Math.random() * (this.canvasHeight - 60))
-        this.points[i] = new Point(x, y)
-      }
-    },
+    // {{{ restart
     restart () {
       this.lines = []
       this.edges = null
-      this.points = []
       this.finishedGame = false
-      this.clear()
+
+      this.clearPoints()
       this.generatePoints()
       this.triangulate()
-      this.randomizePoints()
+      this.arrangePoints()
       this.connectPoints()
       this.drawAllNodes()
     },
+    // }}}
+    // {{{ matchPoints
     matchPoints (checkPoint, mousePoint) {
       if (mousePoint.x > checkPoint.x + this.pointSize) {
         return false
@@ -97,25 +98,37 @@ export default {
       }
       return true
     },
+    // }}}
+    // {{{ clear
     clear () {
       this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
     },
+    // }}}
+    // {{{ levels
     easyLevel () {
-      this.pointsCount = 6
+      this.pointsCount = 8
       this.restart()
     },
     fairLevel () {
-      this.pointsCount = 9
+      this.pointsCount = 10
       this.restart()
     },
     toughLevel () {
-      this.pointsCount = 12
+      this.pointsCount = 15
       this.restart()
     },
+    crazyLevel () {
+      this.pointsCount = 30
+      this.restart()
+    },
+    // }}}
+    // {{{ clearPoints
     clearPoints () {
       this.points = []
       this.clear()
     },
+    // }}}
+    // {{{ getMousePos
     getMousePos (evt) {
       // https://stackoverflow.com/questions/17130395/real-mouse-position-in-canvas
       var rect = this.context.canvas.getBoundingClientRect()
@@ -124,16 +137,22 @@ export default {
         y: parseInt((evt.clientY - rect.top) / (rect.bottom - rect.top) * this.canvasHeight)
       }
     },
+    // }}}
+    // {{{ mouseup
     mouseup (event) {
       let mouseUpPoint = this.getMousePos(event)
       if (this.dragMode && this.overPoint) {
         this.dragPoint(this.overPoint, mouseUpPoint)
         this.dragMode = false
+        this.points.forEach((point) => { this.drawCircle(point, this.pointSize) })
         if (this.intersectedCount === 0 && !this.finishedGame) { this.playWin() }
       } else {
+        this.connectedWithOverPoint = null
         // this.addNode(mouseUpPoint)
       }
     },
+    // }}}
+    // {{{ dragPoint
     dragPoint (selectedPoint, newPoint) {
       if (this.finishedGame) { return }
       this.points.map((pointToMove) => {
@@ -146,6 +165,8 @@ export default {
         }
       })
     },
+    // }}}
+    // {{{ mousemove
     mousemove (event) {
       let point = this.getMousePos(event)
       // this.selectedPoint(point)
@@ -153,18 +174,25 @@ export default {
         this.dragPoint(this.overPoint, point)
       }
     },
+    // }}}
+    // {{{ mousedown
     mousedown (event) {
       let point = this.getMousePos(event)
       if (this.isMouseOnNode(point)) {
+        this.findConnectedWithOverPoint()
         // point selected
         this.dragMode = true
       } else {
         this.dragMode = false
       }
     },
+    // }}}
+    // {{{ isMouseOnNode
     isMouseOnNode (point) {
       return this.selectedPoint(point) !== null
     },
+        // }}}
+    // {{{ selectedPoint
     selectedPoint (point) {
       for (var iteratedPoint of this.points) {
         if (this.matchPoints(iteratedPoint, point)) {
@@ -175,26 +203,16 @@ export default {
       this.overPoint = null
       return null
     },
+    // }}}}
+    // {{{ addNode
     addNode (point) {
       this.context.save()
       this.drawNode(point)
       this.context.restore()
       this.points.push(point)
     },
-    Turn (p1, p2, p3) {
-      let a = p1.y
-      let b = p1.x
-      let c = p2.y
-      let d = p2.x
-      let e = p3.y
-      let f = p3.x
-      let A = (f - b) * (c - a)
-      let B = (d - b) * (e - a)
-      return (A > B + Number.EPSILON) ? 1 : (A + Number.EPSILON < B) ? -1 : 0
-    },
-    // isIntersect (p1, p2, p3, p4) {
-    //   return (this.Turn(p1, p3, p4) !== this.Turn(p2, p3, p4)) && (this.Turn(p1, p2, p3) !== this.Turn(p1, p2, p4))
-    // },
+    // }}}
+    // {{{ isIntersect
     isIntersect (line1, line2) {
       // convert line1 to general form of line: Ax+By = C
       var a1 = line1.endPoint.y - line1.startPoint.y
@@ -227,6 +245,8 @@ export default {
       // be default the given lines is not intersected.
       return false
     },
+    // }}}
+    // {{{ isInBetween
     // return true if b is between a and c,
     // we exclude the result when a==b or b==c
     isInBetween (a, b, c) {
@@ -240,6 +260,7 @@ export default {
       // true when b is in between a and c
       return (a < b && b < c) || (c < b && b < a)
     },
+    // }}}
     // {{{ drawNode
     drawNode (point) {
       this.context.beginPath()
@@ -254,15 +275,39 @@ export default {
       this.context.stroke()
     },
     // }}}
+    // {{{ findConnectedWithOverPoint
+    findConnectedWithOverPoint () {
+      if (this.connectedWithOverPoint && this.connectedWithOverPoint.overPoint === this.overPoint) { return }
+      let connectedWithOverPoint = []
+      this.lines.forEach(({startPoint, endPoint, isIntersected}) => {
+        if (startPoint === this.overPoint) {
+          connectedWithOverPoint.push(endPoint)
+        } else if (endPoint === this.overPoint) {
+          connectedWithOverPoint.push(startPoint)
+        }
+      })
+      this.connectedWithOverPoint = { overPoint: this.overPoint, connectedPoints: connectedWithOverPoint }
+    },
+    // }}}
+    // {{{ isPointConnectWithOverPoint
+    isPointConnectWithOverPoint (point) {
+      if (this.overPoint === point) { return true }
+      if (!this.connectedWithOverPoint) { return false }
+      if (this.connectedWithOverPoint.connectedPoints && this.connectedWithOverPoint.connectedPoints.includes(point)) {
+        return true
+      }
+    },
+    // }}}
     // {{{ drawCircle
     drawCircle (point, radius) {
-      this.context.fillStyle = '#d00'
+      this.context.fillStyle = this.isPointConnectWithOverPoint(point) && this.dragMode ? '#DA0' : '#d46'
       this.context.beginPath()
       this.context.arc(point.x, point.y, radius, 0, Math.PI * 2, true)
       this.context.closePath()
       this.context.fill()
     },
     // }}}
+    // {{{ Line
     Line (startPoint, endPoint, isIntersected) {
       return {
         startPoint: startPoint,
@@ -270,26 +315,41 @@ export default {
         isIntersected: isIntersected
       }
     },
+    // }}}
+    // {{{ drawLine
     drawLine (x1, y1, x2, y2, isIntersected) {
       this.context.beginPath()
       this.context.moveTo(x1, y1)
       this.context.lineTo(x2, y2)
-      this.context.lineWidth = 4
-      this.context.strokeStyle = isIntersected ? 'navy' : '#cfc'
+      this.context.lineWidth = 2
+      this.context.strokeStyle = isIntersected ? 'navy' : '#43e3bc'
       this.context.stroke()
     },
+    // }}}
+    // {{{ generatePoints
     generatePoints () {
-      for (let i = 0; i < this.pointsCount - 4; i++) {
-        let x = Math.floor((this.canvasWidth / 2) + 100 * Math.cos(2 * Math.PI * i / (this.pointsCount - 4)))
-        let y = Math.floor((this.canvasHeight / 2) + 100 * Math.sin(2 * Math.PI * i / (this.pointsCount - 4)))
-        this.points.push(new Point(x, y))
-      }
-      for (let i = 0; i < 4; i++) {
-        let x = Math.floor((this.canvasWidth / 2) + 50 * Math.cos(2 * Math.PI * i / 4))
-        let y = Math.floor((this.canvasHeight / 2) + 50 * Math.sin(2 * Math.PI * i / 4))
+      for (var i = 0; i < this.pointsCount; i++) {
+        var x = 30 + Math.floor(Math.random() * (this.canvasWidth - 60))
+        var y = 30 + Math.floor(Math.random() * (this.canvasHeight - 60))
         this.points.push(new Point(x, y))
       }
     },
+    // }}}
+    // {{{ arrangePoints
+    arrangePoints () {
+      for (let i = 0; i < this.pointsCount - 4; i++) {
+        let x = Math.floor((this.canvasWidth / 2) + 150 * Math.cos(2 * Math.PI * i / (this.pointsCount - 4)))
+        let y = Math.floor((this.canvasHeight / 2) + 150 * Math.sin(2 * Math.PI * i / (this.pointsCount - 4)))
+        this.points[i] = new Point(x, y)
+      }
+      for (let i = 0; i < 4; i++) {
+        let x = Math.floor((this.canvasWidth / 2) + 70 * Math.cos(2 * Math.PI * i / 4))
+        let y = Math.floor((this.canvasHeight / 2) + 70 * Math.sin(2 * Math.PI * i / 4))
+        this.points[this.pointsCount - i - 1] = new Point(x, y)
+      }
+    },
+    // }}}
+    // {{{ connectPoints
     connectPoints () {
       // populate this.lines[] with points based on trianglulated edges
       this.lines = []
@@ -297,6 +357,8 @@ export default {
         this.lines.push(this.Line(this.points[a], this.points[b], false))
       })
     },
+    // }}}
+    // {{{ triangulate
     triangulate () {
       // use cdt2d to draw Delaunay Triangulation to ensure a planar graph
       // var points = [ [-2, -2], [-2, 2], [2, 2], [2, -2], [1, 0], [0, 1], [-1, 0], [0, -1] ]
@@ -308,16 +370,23 @@ export default {
         edges.push([a, b])
         edges.push([b, c])
         edges.push([c, a])
-        console.log(a, b, c)
       })
       if (!this.edges) { this.edges = edges }
     },
+    // }}}
+    // {{{ playWin
     playWin () {
       this.finishedGame = true
       new Audio('/static/tada.mp3').play()
     },
+    // }}}
+    // {{{ updateLineIntersection
+    // checking lines intersection between all points O(n^2)
     updateLineIntersection () {
-      // checking lines intersection and bold those lines.
+      // TODO:
+      // Optimize intersection checking using sweepline algorithm O(nLogn)
+      // [calvinmetcalf/sweepline](https://github.com/calvinmetcalf/sweepline)
+
       this.intersectedCount = 0
       for (var i = 0; i < this.lines.length; i++) {
         let line1 = this.lines[i]
@@ -337,12 +406,16 @@ export default {
         }
       }
     },
+    // }}}
+    // {{{ drawAllLines
     drawAllLines () {
       this.updateLineIntersection()
       this.lines.forEach(({startPoint, endPoint, isIntersected}) => {
         this.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y, isIntersected)
       })
     },
+    // }}}
+    // {{{ drawAllNodes
     drawAllNodes () {
       this.context.save()
       this.connectPoints()
@@ -352,6 +425,7 @@ export default {
       }
       this.context.restore()
     }
+    // }}}
   }
 }
 </script>
@@ -377,7 +451,7 @@ export default {
     text-align:center;
     color:#fff;
     text-shadow:0px 0px 20px rgba(0,0,0,0.3);
-    background-color:rgba(0,200,0,0.5);
+    background-color:rgba(0,200,150,0.5);
   }
   .flex{
     display: flex;
@@ -389,5 +463,9 @@ export default {
     border: 1px solid #eee;
     margin: 10px;
     padding: 10px;
+  }
+  h4 {
+    text-align:center;
+    color: rgba(0,200,150,1);
   }
 </style>

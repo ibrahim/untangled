@@ -1,7 +1,7 @@
 {
-  "name": "vue-draw-canvas",
+  "name": "Untangled",
   "version": "1.0.0",
-  "description": "A Vue.js project",
+  "description": "Untangle game in Vue.js",
   "author": "Ibrahim Ahmed <ia.ibrahim@gmail.com>",
   "private": true,
   "scripts": {
