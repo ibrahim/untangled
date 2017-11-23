@@ -2,8 +2,8 @@
   <div class="flex">
 
     <div>
-      <h3><a href="https://github.com/ibrahim/untangled">Untangled</a></h3>
-      <div>
+      <h1><a href="https://github.com/ibrahim/untangled">Untangled</a></h1>
+      <div class="button-bar">
         <button @click="restart">Restart Game</button>
         <button @click="easyLevel">Easy</button>
         <button @click="fairLevel">Fair</button>
@@ -430,28 +430,32 @@ export default {
 }
 </script>
 <style>
+    body {
+        margin:0px;
+        padding:0px;
+    }
   canvas {
-    border:1px solid #bbb;
+      box-shadow:0px 0px 40px rgba(0,0,0,0.1);
   }
   .canvas-container {
     position:relative;
   }
   .youwin {
-    pointer-events:none;
-    position:absolute;
-    top:160px;
-    width:400px;
-    margin-left:-200px;
-    left:50%;
-    height:160px;
-    font-size:80px;
-    font-weight:bold;
-    font-family:Impact;
-    padding:70px 0px 0px 0px;
-    text-align:center;
-    color:#fff;
-    text-shadow:0px 0px 20px rgba(0,0,0,0.3);
-    background-color:rgba(0,200,150,0.5);
+    pointer-events: none;
+    position: absolute;
+    top: 130px;
+    width: 400px;
+    margin-left: -200px;
+    left: 50%;
+    height: 140px;
+    font-size: 80px;
+    font-weight: bold;
+    font-family: Impact;
+    padding: 40px 0px 0px 0px;
+    text-align: center;
+    color: #fff;
+    text-shadow: 0px 0px 20px rgba(0,0,0,0.3);
+    background-color: rgba(0,200,150,0.5);
   }
   .flex{
     display: flex;
@@ -460,11 +464,30 @@ export default {
     align-items:center;
   }
   .flex > * {
-    margin: 10px;
-    padding: 10px;
+    margin: 0px;
+    padding: 0px;
   }
-  h3 {
+  h1 {
     text-align:center;
     color: rgba(0,200,150,1);
+    margin:0px 0px 20px 0px;
+  }
+  h1 a {
+    font:100 42px Helvetica, Arial;
+    letter-spacing:-2px;
+    color:rgba(0,200,150,1);
+    text-decoration:none;
+  }
+  .button-bar {
+    height:50px;
+  }
+  button {
+    background-color:rgba(0,200,150,0.6);
+    padding:6px 12px;
+    margin:0px 10px;
+    font:200 16px Arial,Roboto;
+    color:#fff;
+    border-radius:3px;
+    border:0px;
   }
 </style>
