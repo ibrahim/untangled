@@ -377,7 +377,7 @@ export default {
     // {{{ playWin
     playWin () {
       this.finishedGame = true
-      new Audio('/static/tada.mp3').play()
+      new Audio('https://ibrahim.github.io/untangled/static/tada.mp3').play()
     },
     // }}}
     // {{{ updateLineIntersection
