@@ -11,10 +11,12 @@
 - Drag functionality from [stefanonepa/vue-draw-canvas](https://github.com/stefanonepa/vue-draw-canvas)
 - Line intersection algorithm from [Makzan Untangle Puzzle HTML5 games](http://makzan.net/html5-games/untangle-wip-dragging/js/untangle.data.js)
 - Delaunay Triangulation to build planar graph and ensure a solvable puzzles using [Mikola Lysenko's cdt2d](https://github.com/mikolalysenko/cdt2d)
-- Sweepline algorithm to check for line intersection between all points [calvinmetcalf/sweepline](https://github.com/calvinmetcalf/sweepline)
+- Sweepline algorithm to check for line intersection between all points [tokumine/sweepline](https://github.com/tokumine/sweepline)
 
 ## TODO
-Currently checking lines intersection is using O(n^2) algorithm.  Optimally the line intersections checking should use sweepline algorithm O(nLogn) using  [calvinmetcalf/sweepline](https://github.com/calvinmetcalf/sweepline)
+- Currently checking lines intersection is using O(n^2) algorithm.  Optimally the line intersections checking should use sweepline algorithm O(nLogn) using  [tokumine/sweepline](https://github.com/tokumine/sweepline)
+- Fixing lines duplication, currently pointA/pointB !== pointB/pointA
+
 
 ## Build Setup
 

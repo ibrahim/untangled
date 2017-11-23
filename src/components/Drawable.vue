@@ -385,7 +385,7 @@ export default {
     updateLineIntersection () {
       // TODO:
       // Optimize intersection checking using sweepline algorithm O(nLogn)
-      // [calvinmetcalf/sweepline](https://github.com/calvinmetcalf/sweepline)
+      // [tokumine/sweepline](https://github.com/tokumine/sweepline)
 
       this.intersectedCount = 0
       for (var i = 0; i < this.lines.length; i++) {
