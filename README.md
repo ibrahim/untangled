@@ -2,6 +2,8 @@
 
 > Untangle game developed in HTML5 Canvas and vue.js based on the work of [stefanonepa/vue-draw-canvas](https://github.com/stefanonepa/vue-draw-canvas)
 
+## [Play Untangled](ibrahim.github.io/untangled/)
+
 ## Features
 - Highligthing line intersections
 - Highlighting connected points while dragging
