@@ -2,7 +2,7 @@
   <div class="flex">
 
     <div>
-      <h4><a href="https://github.com/ibrahim/untangled">Untangled Game in HTML5/Canvas and Vue.js</a></h4>
+      <h3><a href="https://github.com/ibrahim/untangled">Untangled</a></h3>
       <div>
         <button @click="restart">Restart Game</button>
         <button @click="easyLevel">Easy</button>
@@ -460,11 +460,10 @@ export default {
     align-items:center;
   }
   .flex > * {
-    border: 1px solid #eee;
     margin: 10px;
     padding: 10px;
   }
-  h4 {
+  h3 {
     text-align:center;
     color: rgba(0,200,150,1);
   }
