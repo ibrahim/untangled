@@ -4,6 +4,9 @@
 
 ## [Play Untangled](https://ibrahim.github.io/untangled/)
 
+![](untangled.gif)
+![](untangled_solve.gif)
+
 ## Features
 - Highligthing line intersections
 - Highlighting connected points while dragging
